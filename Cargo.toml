@@ -1,0 +1,19 @@
+[package]
+name = "depsdev"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "Checks project dependencies for newer releases using the deps.dev API"
+repository = "https://github.com/pixel365/depsdev"
+license = "MIT"
+readme = "README.md"
+keywords = ["dependencies", "deps-dev", "outdated", "versions", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[dependencies]

@@ -1,0 +1,241 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: depsdev
+
+jobs:
+  verify:
+    name: Verify tag and run checks
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+
+      - name: Check that the tag matches the crate version
+        id: version
+        run: |
+          set -euo pipefail
+          crate_version=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[0].version')
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$crate_version" != "$tag_version" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${crate_version}"
+            exit 1
+          fi
+          echo "version=${crate_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Check formatting
+        run: make fmt
+
+      - name: Run linter (Clippy)
+        run: make clippy
+
+      - name: Run tests
+        run: make test
+
+      - name: Extract release notes from CHANGELOG.md
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          notes=$(awk -v ver="$VERSION" '
+            index($0, "## [" ver "]") == 1 { found = 1; next }
+            found && index($0, "## [") == 1 { exit }
+            found && $0 ~ /^\[[^]]+\]:[[:space:]]/ { exit }
+            found { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' | tac | sed -e '/./,$!d' | tac)
+          if [ -z "$notes" ]; then
+            echo "::error::CHANGELOG.md has no entries under '## [${VERSION}]'. Add the section for this release before tagging."
+            exit 1
+          fi
+          printf '%s\n' "$notes" > release-notes.md
+
+      - name: Upload release notes for the publish job
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+          retention-days: 1
+
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            platform: linux_amd64
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            platform: linux_arm64
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            platform: darwin_amd64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            platform: darwin_arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            platform: windows_amd64
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Install Linux ARM64 linker
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+        env:
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+
+      - name: Package (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          set -euo pipefail
+          archive="${BINARY_NAME}_${VERSION}_${{ matrix.platform }}.tar.gz"
+          tar -czf "$archive" -C "target/${{ matrix.target }}/release" "$BINARY_NAME"
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $archive = "{0}_{1}_{2}.zip" -f $env:BINARY_NAME, $env:VERSION, "${{ matrix.platform }}"
+          $binary = "target\${{ matrix.target }}\release\$($env:BINARY_NAME).exe"
+          Compress-Archive -Path $binary -DestinationPath $archive
+
+      - name: Upload archive for the publish job
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: archive-${{ matrix.platform }}
+          path: |
+            *.tar.gz
+            *.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    name: Sign and publish
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.verify.outputs.version }}
+    steps:
+      - name: Download built archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: archive-*
+          path: dist
+          merge-multiple: true
+
+      - name: Download release notes
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-notes
+          path: notes
+
+      - name: Install syft
+        env:
+          SYFT_VERSION: "1.51.0"
+          SYFT_SHA256: "2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f"
+        run: |
+          set -euo pipefail
+          curl -sSLo syft.tar.gz "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          echo "${SYFT_SHA256}  syft.tar.gz" | sha256sum -c -
+          mkdir -p syft-dir
+          tar -xzf syft.tar.gz -C syft-dir
+          rm syft.tar.gz
+          sudo mv syft-dir/syft /usr/local/bin/
+
+      - name: Generate SBOMs
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          cd dist
+          for archive in *.tar.gz *.zip; do
+            syft "$archive" -o spdx-json="${archive}.sbom.json"
+          done
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          cd dist
+          sha256sum *.tar.gz *.zip *.sbom.json > "${BINARY_NAME}_${VERSION}_checksums.txt"
+
+      - name: Import GPG key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --import
+          echo "use-agent" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent
+          gpgconf --launch gpg-agent
+
+      - name: Sign archives and checksums
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          cd dist
+          for file in *.tar.gz *.zip "${BINARY_NAME}_${VERSION}_checksums.txt"; do
+            # --output is explicit: with --armor gpg would otherwise write "<file>.asc".
+            printf '%s' "$GPG_PASSPHRASE" | gpg --batch --yes --passphrase-fd 0 \
+              --pinentry-mode loopback --armor --output "${file}.sig" --detach-sign "$file"
+          done
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          files: dist/*
+          body_path: notes/release-notes.md
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

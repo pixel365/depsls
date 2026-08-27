@@ -1,0 +1,35 @@
+# Configuration for cargo-deny: https://embarkstudios.github.io/cargo-deny/
+# Run locally with `make deny` (requires `cargo install cargo-deny`).
+
+[graph]
+all-features = true
+
+[advisories]
+# Security advisories that are knowingly accepted go here, each with a comment
+# explaining why it is not exploitable in this project.
+ignore = []
+
+[licenses]
+# Permissive licenses only: the project ships prebuilt binaries, so anything
+# with a copyleft obligation would change the terms of the released artifacts.
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.9
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

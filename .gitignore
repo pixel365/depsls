@@ -1,0 +1,16 @@
+/target
+
+/dist
+*.tar.gz
+*.zip
+*.sig
+*.sha256
+*.sbom.json
+checksums.txt
+
+.env
+.env.*
+.idea/
+.vscode/
+*.swp
+.DS_Store
