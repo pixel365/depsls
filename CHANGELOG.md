@@ -11,4 +11,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial project scaffolding: build tooling, CI, release pipeline, and contribution docs.
 
-[Unreleased]: https://github.com/pixel365/depsdev/commits/main
+[Unreleased]: https://github.com/pixel365/depsls/commits/main

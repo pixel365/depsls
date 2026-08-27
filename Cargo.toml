@@ -1,14 +1,14 @@
 [package]
-name = "depsdev"
+name = "depsls"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
-description = "Checks project dependencies for newer releases using the deps.dev API"
-repository = "https://github.com/pixel365/depsdev"
+description = "Language server that reports available dependency updates in project manifests, using the deps.dev API"
+repository = "https://github.com/pixel365/depsls"
 license = "MIT"
 readme = "README.md"
-keywords = ["dependencies", "deps-dev", "outdated", "versions", "cli"]
-categories = ["command-line-utilities", "development-tools"]
+keywords = ["lsp", "language-server", "dependencies", "outdated"]
+categories = ["development-tools"]
 
 [profile.release]
 opt-level = 3

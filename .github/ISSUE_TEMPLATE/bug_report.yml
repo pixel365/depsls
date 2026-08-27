@@ -16,7 +16,7 @@ body:
       label: Steps to reproduce
       description: Exact commands, input, and configuration needed to reproduce the problem.
       placeholder: |
-        1. Run `depsdev ...`
+        1. Run `depsls ...`
         2. Observe ...
     validations:
       required: true
@@ -24,8 +24,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: depsdev version
-      description: Output of `depsdev --version`, or the release tag / commit you built from.
+      label: depsls version
+      description: Output of `depsls --version`, or the release tag / commit you built from.
     validations:
       required: true
 

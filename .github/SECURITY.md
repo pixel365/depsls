@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-We actively maintain and patch security issues for the latest release version of `depsdev`.
+We actively maintain and patch security issues for the latest release version of `depsls`.
 
 ## Reporting a Vulnerability
 
@@ -27,11 +27,11 @@ Each release publishes, for every supported platform:
 
 | Artifact | Description |
 | --- | --- |
-| `depsdev_<version>_<os>_<arch>.tar.gz` (`.zip` on Windows) | The release archive containing the binary |
+| `depsls_<version>_<os>_<arch>.tar.gz` (`.zip` on Windows) | The release archive containing the binary |
 | `<archive>.sig` | Detached GPG signature of that archive |
 | `<archive>.sbom.json` | SPDX SBOM generated with [syft](https://github.com/anchore/syft) |
-| `depsdev_<version>_checksums.txt` | SHA-256 checksums of every archive and SBOM in the release |
-| `depsdev_<version>_checksums.txt.sig` | Detached GPG signature of the checksum file |
+| `depsls_<version>_checksums.txt` | SHA-256 checksums of every archive and SBOM in the release |
+| `depsls_<version>_checksums.txt.sig` | Detached GPG signature of the checksum file |
 
 `<version>` is the release version without the leading `v` (for example `1.0.0`),
 `<os>` is one of `linux`, `darwin`, `windows`, and `<arch>` is `amd64` or `arm64`.
@@ -59,13 +59,13 @@ than trusting the key the keyserver happened to return.
 Then verify the archive you downloaded:
 
 ```bash
-gpg --verify depsdev_1.0.0_linux_amd64.tar.gz.sig depsdev_1.0.0_linux_amd64.tar.gz
+gpg --verify depsls_1.0.0_linux_amd64.tar.gz.sig depsls_1.0.0_linux_amd64.tar.gz
 ```
 
 Checksums can be checked on their own. Verify the signature of the checksum file
 first, otherwise the checksums themselves are untrusted:
 
 ```bash
-gpg --verify depsdev_1.0.0_checksums.txt.sig depsdev_1.0.0_checksums.txt
-sha256sum --ignore-missing -c depsdev_1.0.0_checksums.txt
+gpg --verify depsls_1.0.0_checksums.txt.sig depsls_1.0.0_checksums.txt
+sha256sum --ignore-missing -c depsls_1.0.0_checksums.txt
 ```

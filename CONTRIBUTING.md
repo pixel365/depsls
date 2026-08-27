@@ -1,6 +1,6 @@
-# Contributing to depsdev
+# Contributing to depsls
 
-Thank you for your interest in contributing to [depsdev](https://github.com/pixel365/depsdev)! Please follow these guidelines to ensure your contributions are helpful and easy to integrate.
+Thank you for your interest in contributing to [depsls](https://github.com/pixel365/depsls)! Please follow these guidelines to ensure your contributions are helpful and easy to integrate.
 
 ## General Guidelines
 
@@ -61,4 +61,4 @@ cannot drift apart.
 - Provide a clear problem description with examples if possible.
 - For bugs, include your Rust version (`rustc --version`), Cargo version, system details, reproduction steps, and expected behavior.
 
-Thank you for contributing to [depsdev](https://github.com/pixel365/depsdev)! 🚀
+Thank you for contributing to [depsls](https://github.com/pixel365/depsls)! 🚀
